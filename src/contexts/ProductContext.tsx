@@ -1,14 +1,17 @@
+
 import { 
-  createContext, 
+  createContext,
   useContext, 
   ReactNode, 
   useState, 
-  useCallback 
+  useCallback, 
+  useEffect 
 } from "react";
 import { Product } from "@/lib/types";
-import { mockProducts } from "@/lib/mock-data";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
+// ProductContextType 不变
 interface ProductContextType {
   products: Product[];
   filteredProducts: Product[];
@@ -21,9 +24,9 @@ interface ProductContextType {
   setStatusFilter: (status: string) => void;
   setCategoryFilter: (category: string) => void;
   setBrandFilter: (brand: string) => void;
-  addProduct: (product: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>) => void;
-  updateProduct: (product: Product) => void;
-  deleteProduct: (id: string) => void;
+  addProduct: (product: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+  updateProduct: (product: Product) => Promise<void>;
+  deleteProduct: (id: string) => Promise<void>;
   getProduct: (id: string) => Product | undefined;
   resetFilters: () => void;
 }
@@ -31,80 +34,102 @@ interface ProductContextType {
 const ProductContext = createContext<ProductContextType | undefined>(undefined);
 
 export const ProductProvider = ({ children }: { children: ReactNode }) => {
-  const [products, setProducts] = useState<Product[]>(mockProducts);
+  const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [brandFilter, setBrandFilter] = useState('all');
 
-  const getCategories = useCallback(() => {
-    const categories = new Set(products.map(product => product.category));
-    return Array.from(categories);
-  }, [products]);
+  // 初始化加载数据库商品
+  useEffect(() => {
+    const fetchProducts = async () => {
+      setIsLoading(true);
 
-  const getBrands = useCallback(() => {
-    const brands = new Set(products.map(product => (product as any).brand || '未知品牌'));
-    return Array.from(brands);
-  }, [products]);
+      const { data, error } = await supabase
+        .from("products")
+        .select("*")
+        .order("created_at", { ascending: false });
 
-  const filteredProducts = products.filter(product => {
-    const matchesSearch = searchTerm === '' || 
-      product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product.sku.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesStatus = statusFilter === 'all' || product.status === statusFilter;
-    const matchesCategory = categoryFilter === 'all' || product.category === categoryFilter;
-    const matchesBrand =
-      brandFilter === 'all' ||
-      ((product as any).brand || '未知品牌') === brandFilter;
-    
-    return matchesSearch && matchesStatus && matchesCategory && matchesBrand;
-  });
-
-  const addProduct = useCallback((product: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>) => {
-    setIsLoading(true);
-    
-    setTimeout(() => {
-      const newProduct: Product = {
-        ...product,
-        id: `${products.length + 1}`,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      };
-      
-      setProducts(prevProducts => [...prevProducts, newProduct]);
-      toast.success('Product added successfully');
+      if (error) {
+        toast.error("Error loading products");
+        setProducts([]);
+      } else {
+        setProducts(data as Product[]);
+      }
       setIsLoading(false);
-    }, 500);
-  }, [products]);
+    };
 
-  const updateProduct = useCallback((updatedProduct: Product) => {
-    setIsLoading(true);
-    
-    setTimeout(() => {
-      setProducts(prevProducts => 
-        prevProducts.map(product => 
-          product.id === updatedProduct.id 
-            ? { ...updatedProduct, updatedAt: new Date().toISOString() } 
-            : product
-        )
-      );
-      
-      toast.success('Product updated successfully');
-      setIsLoading(false);
-    }, 500);
+    fetchProducts();
   }, []);
 
-  const deleteProduct = useCallback((id: string) => {
-    setIsLoading(true);
-    
-    setTimeout(() => {
-      setProducts(prevProducts => prevProducts.filter(product => product.id !== id));
-      toast.success('Product deleted successfully');
+  // CRUD 操作
+  const addProduct = useCallback(
+    async (product: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>) => {
+      setIsLoading(true);
+      const { data, error } = await supabase
+        .from("products")
+        .insert([product])
+        .select()
+        .single();
+
+      if (error) {
+        toast.error("Failed to add product");
+      } else if (data) {
+        setProducts(prev => [data as Product, ...prev]);
+        toast.success("Product added successfully");
+      }
       setIsLoading(false);
-    }, 500);
-  }, []);
+    },
+    []
+  );
+
+  const updateProduct = useCallback(
+    async (updatedProduct: Product) => {
+      setIsLoading(true);
+      const { data, error } = await supabase
+        .from("products")
+        .update({
+          ...updatedProduct,
+          updated_at: new Date().toISOString()
+        })
+        .eq("id", updatedProduct.id)
+        .select()
+        .single();
+
+      if (error) {
+        toast.error("Failed to update product");
+      } else if (data) {
+        setProducts(prev =>
+          prev.map(product => 
+            product.id === updatedProduct.id ? (data as Product) : product
+          )
+        );
+        toast.success("Product updated successfully");
+      }
+      setIsLoading(false);
+    },
+    []
+  );
+
+  const deleteProduct = useCallback(
+    async (id: string) => {
+      setIsLoading(true);
+      const { error } = await supabase
+        .from("products")
+        .delete()
+        .eq("id", id);
+
+      if (error) {
+        toast.error("Failed to delete product");
+      } else {
+        setProducts(prev => prev.filter(product => product.id !== id));
+        toast.success("Product deleted successfully");
+      }
+      setIsLoading(false);
+    },
+    []
+  );
 
   const getProduct = useCallback((id: string) => {
     return products.find(product => product.id === id);
@@ -116,6 +141,18 @@ export const ProductProvider = ({ children }: { children: ReactNode }) => {
     setCategoryFilter('all');
     setBrandFilter('all');
   }, []);
+
+  const filteredProducts = products.filter(product => {
+    const matchesSearch = searchTerm === '' || 
+      product.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      product.sku?.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesStatus = statusFilter === 'all' || product.status === statusFilter;
+    const matchesCategory = categoryFilter === 'all' || product.category === categoryFilter;
+    const matchesBrand = brandFilter === 'all' || ((product as any).brand || '未知品牌') === brandFilter;
+    
+    return matchesSearch && matchesStatus && matchesCategory && matchesBrand;
+  });
 
   return (
     <ProductContext.Provider value={{
