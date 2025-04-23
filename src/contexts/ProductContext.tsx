@@ -33,6 +33,23 @@ interface ProductContextType {
 
 const ProductContext = createContext<ProductContextType | undefined>(undefined);
 
+// Helper function to map database response to Product type
+const mapDbProductToProduct = (dbProduct: any): Product => {
+  return {
+    id: dbProduct.id,
+    name: dbProduct.name,
+    category: dbProduct.category,
+    price: dbProduct.price,
+    stock: dbProduct.stock,
+    status: dbProduct.status as 'active' | 'inactive',
+    sku: dbProduct.sku,
+    description: dbProduct.description || '',
+    image: dbProduct.image || '',
+    createdAt: dbProduct.created_at,
+    updatedAt: dbProduct.updated_at
+  };
+};
+
 export const ProductProvider = ({ children }: { children: ReactNode }) => {
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -55,7 +72,8 @@ export const ProductProvider = ({ children }: { children: ReactNode }) => {
         toast.error("Error loading products");
         setProducts([]);
       } else {
-        setProducts(data as Product[]);
+        // Map the database response to our Product type
+        setProducts(data.map(mapDbProductToProduct));
       }
       setIsLoading(false);
     };
@@ -76,7 +94,7 @@ export const ProductProvider = ({ children }: { children: ReactNode }) => {
       if (error) {
         toast.error("Failed to add product");
       } else if (data) {
-        setProducts(prev => [data as Product, ...prev]);
+        setProducts(prev => [mapDbProductToProduct(data), ...prev]);
         toast.success("Product added successfully");
       }
       setIsLoading(false);
@@ -87,12 +105,23 @@ export const ProductProvider = ({ children }: { children: ReactNode }) => {
   const updateProduct = useCallback(
     async (updatedProduct: Product) => {
       setIsLoading(true);
+      
+      // Convert from Product type to DB schema (removing properties not in DB)
+      const dbProduct = {
+        id: updatedProduct.id,
+        name: updatedProduct.name,
+        category: updatedProduct.category,
+        price: updatedProduct.price,
+        stock: updatedProduct.stock,
+        status: updatedProduct.status,
+        sku: updatedProduct.sku,
+        description: updatedProduct.description,
+        image: updatedProduct.image,
+      };
+      
       const { data, error } = await supabase
         .from("products")
-        .update({
-          ...updatedProduct,
-          updated_at: new Date().toISOString()
-        })
+        .update(dbProduct)
         .eq("id", updatedProduct.id)
         .select()
         .single();
@@ -102,7 +131,7 @@ export const ProductProvider = ({ children }: { children: ReactNode }) => {
       } else if (data) {
         setProducts(prev =>
           prev.map(product => 
-            product.id === updatedProduct.id ? (data as Product) : product
+            product.id === updatedProduct.id ? mapDbProductToProduct(data) : product
           )
         );
         toast.success("Product updated successfully");
