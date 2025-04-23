@@ -17,20 +17,24 @@ interface ProductFiltersProps {
   onSearchChange: (value: string) => void;
   onStatusChange: (value: string) => void;
   onCategoryChange: (value: string) => void;
+  onBrandChange: (value: string) => void;
   onReset: () => void;
   searchTerm: string;
   statusFilter: string;
   categoryFilter: string;
+  brandFilter: string;
 }
 
 export const ProductFilters = ({
   onSearchChange,
   onStatusChange,
   onCategoryChange,
+  onBrandChange,
   onReset,
   searchTerm,
   statusFilter,
-  categoryFilter
+  categoryFilter,
+  brandFilter,
 }: ProductFiltersProps) => {
   const { products } = useProducts();
   
@@ -39,9 +43,15 @@ export const ProductFilters = ({
     const uniqueCategories = new Set(products.map(product => product.category));
     return Array.from(uniqueCategories);
   }, [products]);
+  // Get unique brands
+  const brands = useCallback(() => {
+    const uniqueBrands = new Set(products.map(product => (product as any).brand || '未知品牌'));
+    return Array.from(uniqueBrands);
+  }, [products]);
   
-  const hasActiveFilters = searchTerm || statusFilter !== 'all' || categoryFilter !== 'all';
-  
+  const hasActiveFilters =
+    searchTerm || statusFilter !== 'all' || categoryFilter !== 'all' || brandFilter !== 'all';
+
   return (
     <div className="flex flex-col md:flex-row gap-4 mb-6">
       <div className="relative flex-1">
@@ -55,7 +65,7 @@ export const ProductFilters = ({
       </div>
       
       <Select value={statusFilter} onValueChange={onStatusChange}>
-        <SelectTrigger className="w-full md:w-[180px]">
+        <SelectTrigger className="w-full md:w-[150px]">
           <SelectValue placeholder="Filter by status" />
         </SelectTrigger>
         <SelectContent>
@@ -83,6 +93,22 @@ export const ProductFilters = ({
         </SelectContent>
       </Select>
       
+      <Select value={brandFilter} onValueChange={onBrandChange}>
+        <SelectTrigger className="w-full md:w-[180px]">
+          <SelectValue placeholder="Filter by brand" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectGroup>
+            <SelectItem value="all">All Brands</SelectItem>
+            {brands().map((brand) => (
+              <SelectItem key={brand} value={brand}>
+                {brand}
+              </SelectItem>
+            ))}
+          </SelectGroup>
+        </SelectContent>
+      </Select>
+
       {hasActiveFilters && (
         <Button 
           variant="outline" 

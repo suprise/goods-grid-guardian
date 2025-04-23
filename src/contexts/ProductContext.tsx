@@ -1,4 +1,3 @@
-
 import { 
   createContext, 
   useContext, 
@@ -17,9 +16,11 @@ interface ProductContextType {
   searchTerm: string;
   statusFilter: string;
   categoryFilter: string;
+  brandFilter: string;
   setSearchTerm: (term: string) => void;
   setStatusFilter: (status: string) => void;
   setCategoryFilter: (category: string) => void;
+  setBrandFilter: (brand: string) => void;
   addProduct: (product: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>) => void;
   updateProduct: (product: Product) => void;
   deleteProduct: (id: string) => void;
@@ -35,14 +36,18 @@ export const ProductProvider = ({ children }: { children: ReactNode }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
+  const [brandFilter, setBrandFilter] = useState('all');
 
-  // Get all unique categories from products
   const getCategories = useCallback(() => {
     const categories = new Set(products.map(product => product.category));
     return Array.from(categories);
   }, [products]);
 
-  // Filter products based on search term and filters
+  const getBrands = useCallback(() => {
+    const brands = new Set(products.map(product => (product as any).brand || '未知品牌'));
+    return Array.from(brands);
+  }, [products]);
+
   const filteredProducts = products.filter(product => {
     const matchesSearch = searchTerm === '' || 
       product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -50,15 +55,16 @@ export const ProductProvider = ({ children }: { children: ReactNode }) => {
     
     const matchesStatus = statusFilter === 'all' || product.status === statusFilter;
     const matchesCategory = categoryFilter === 'all' || product.category === categoryFilter;
+    const matchesBrand =
+      brandFilter === 'all' ||
+      ((product as any).brand || '未知品牌') === brandFilter;
     
-    return matchesSearch && matchesStatus && matchesCategory;
+    return matchesSearch && matchesStatus && matchesCategory && matchesBrand;
   });
 
-  // Add a new product
   const addProduct = useCallback((product: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>) => {
     setIsLoading(true);
     
-    // Simulate API call
     setTimeout(() => {
       const newProduct: Product = {
         ...product,
@@ -73,11 +79,9 @@ export const ProductProvider = ({ children }: { children: ReactNode }) => {
     }, 500);
   }, [products]);
 
-  // Update an existing product
   const updateProduct = useCallback((updatedProduct: Product) => {
     setIsLoading(true);
     
-    // Simulate API call
     setTimeout(() => {
       setProducts(prevProducts => 
         prevProducts.map(product => 
@@ -92,11 +96,9 @@ export const ProductProvider = ({ children }: { children: ReactNode }) => {
     }, 500);
   }, []);
 
-  // Delete a product
   const deleteProduct = useCallback((id: string) => {
     setIsLoading(true);
     
-    // Simulate API call
     setTimeout(() => {
       setProducts(prevProducts => prevProducts.filter(product => product.id !== id));
       toast.success('Product deleted successfully');
@@ -104,16 +106,15 @@ export const ProductProvider = ({ children }: { children: ReactNode }) => {
     }, 500);
   }, []);
 
-  // Get a product by ID
   const getProduct = useCallback((id: string) => {
     return products.find(product => product.id === id);
   }, [products]);
 
-  // Reset all filters
   const resetFilters = useCallback(() => {
     setSearchTerm('');
     setStatusFilter('all');
     setCategoryFilter('all');
+    setBrandFilter('all');
   }, []);
 
   return (
@@ -124,9 +125,11 @@ export const ProductProvider = ({ children }: { children: ReactNode }) => {
       searchTerm,
       statusFilter,
       categoryFilter,
+      brandFilter,
       setSearchTerm,
       setStatusFilter,
       setCategoryFilter,
+      setBrandFilter,
       addProduct,
       updateProduct,
       deleteProduct,

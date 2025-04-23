@@ -16,9 +16,11 @@ const ProductsPage = () => {
     searchTerm,
     statusFilter,
     categoryFilter,
+    brandFilter,
     setSearchTerm,
     setStatusFilter,
     setCategoryFilter,
+    setBrandFilter,
     addProduct,
     updateProduct,
     deleteProduct,
@@ -74,10 +76,12 @@ const ProductsPage = () => {
         onSearchChange={setSearchTerm}
         onStatusChange={setStatusFilter}
         onCategoryChange={setCategoryFilter}
+        onBrandChange={setBrandFilter}
         onReset={resetFilters}
         searchTerm={searchTerm}
         statusFilter={statusFilter}
         categoryFilter={categoryFilter}
+        brandFilter={brandFilter}
       />
       
       <ProductTable 
