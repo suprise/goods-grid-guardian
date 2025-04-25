@@ -1,4 +1,3 @@
-
 import { 
   createContext,
   useContext, 
@@ -11,7 +10,6 @@ import { Product } from "@/lib/types";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
-// ProductContextType 不变
 interface ProductContextType {
   products: Product[];
   filteredProducts: Product[];
@@ -20,10 +18,12 @@ interface ProductContextType {
   statusFilter: string;
   categoryFilter: string;
   brandFilter: string;
+  stockFilter: string;
   setSearchTerm: (term: string) => void;
   setStatusFilter: (status: string) => void;
   setCategoryFilter: (category: string) => void;
   setBrandFilter: (brand: string) => void;
+  setStockFilter: (stock: string) => void;
   addProduct: (product: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
   updateProduct: (product: Product) => Promise<void>;
   deleteProduct: (id: string) => Promise<void>;
@@ -33,7 +33,6 @@ interface ProductContextType {
 
 const ProductContext = createContext<ProductContextType | undefined>(undefined);
 
-// Helper function to map database response to Product type
 const mapDbProductToProduct = (dbProduct: any): Product => {
   return {
     id: dbProduct.id,
@@ -57,8 +56,8 @@ export const ProductProvider = ({ children }: { children: ReactNode }) => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [brandFilter, setBrandFilter] = useState('all');
+  const [stockFilter, setStockFilter] = useState('all');
 
-  // 初始化加载数据库商品
   useEffect(() => {
     const fetchProducts = async () => {
       setIsLoading(true);
@@ -72,7 +71,6 @@ export const ProductProvider = ({ children }: { children: ReactNode }) => {
         toast.error("Error loading products");
         setProducts([]);
       } else {
-        // Map the database response to our Product type
         setProducts(data.map(mapDbProductToProduct));
       }
       setIsLoading(false);
@@ -81,7 +79,6 @@ export const ProductProvider = ({ children }: { children: ReactNode }) => {
     fetchProducts();
   }, []);
 
-  // CRUD 操作
   const addProduct = useCallback(
     async (product: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>) => {
       setIsLoading(true);
@@ -106,7 +103,6 @@ export const ProductProvider = ({ children }: { children: ReactNode }) => {
     async (updatedProduct: Product) => {
       setIsLoading(true);
       
-      // Convert from Product type to DB schema (removing properties not in DB)
       const dbProduct = {
         id: updatedProduct.id,
         name: updatedProduct.name,
@@ -169,6 +165,7 @@ export const ProductProvider = ({ children }: { children: ReactNode }) => {
     setStatusFilter('all');
     setCategoryFilter('all');
     setBrandFilter('all');
+    setStockFilter('all');
   }, []);
 
   const filteredProducts = products.filter(product => {
@@ -180,7 +177,12 @@ export const ProductProvider = ({ children }: { children: ReactNode }) => {
     const matchesCategory = categoryFilter === 'all' || product.category === categoryFilter;
     const matchesBrand = brandFilter === 'all' || ((product as any).brand || '未知品牌') === brandFilter;
     
-    return matchesSearch && matchesStatus && matchesCategory && matchesBrand;
+    const matchesStock = stockFilter === 'all' || 
+      (stockFilter === 'out' && product.stock === 0) ||
+      (stockFilter === 'low' && product.stock > 0 && product.stock <= 10) ||
+      (stockFilter === 'sufficient' && product.stock > 10);
+    
+    return matchesSearch && matchesStatus && matchesCategory && matchesBrand && matchesStock;
   });
 
   return (
@@ -192,10 +194,12 @@ export const ProductProvider = ({ children }: { children: ReactNode }) => {
       statusFilter,
       categoryFilter,
       brandFilter,
+      stockFilter,
       setSearchTerm,
       setStatusFilter,
       setCategoryFilter,
       setBrandFilter,
+      setStockFilter,
       addProduct,
       updateProduct,
       deleteProduct,

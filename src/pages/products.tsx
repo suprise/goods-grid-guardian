@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Layout } from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
@@ -17,10 +16,12 @@ const ProductsPage = () => {
     statusFilter,
     categoryFilter,
     brandFilter,
+    stockFilter,
     setSearchTerm,
     setStatusFilter,
     setCategoryFilter,
     setBrandFilter,
+    setStockFilter,
     addProduct,
     updateProduct,
     deleteProduct,
@@ -77,11 +78,13 @@ const ProductsPage = () => {
         onStatusChange={setStatusFilter}
         onCategoryChange={setCategoryFilter}
         onBrandChange={setBrandFilter}
+        onStockChange={setStockFilter}
         onReset={resetFilters}
         searchTerm={searchTerm}
         statusFilter={statusFilter}
         categoryFilter={categoryFilter}
         brandFilter={brandFilter}
+        stockFilter={stockFilter}
       />
       
       <ProductTable 

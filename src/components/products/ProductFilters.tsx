@@ -18,11 +18,13 @@ interface ProductFiltersProps {
   onStatusChange: (value: string) => void;
   onCategoryChange: (value: string) => void;
   onBrandChange: (value: string) => void;
+  onStockChange: (value: string) => void;  // 添加库存筛选回调
   onReset: () => void;
   searchTerm: string;
   statusFilter: string;
   categoryFilter: string;
   brandFilter: string;
+  stockFilter: string;  // 添加库存筛选属性
 }
 
 export const ProductFilters = ({
@@ -30,11 +32,13 @@ export const ProductFilters = ({
   onStatusChange,
   onCategoryChange,
   onBrandChange,
+  onStockChange,
   onReset,
   searchTerm,
   statusFilter,
   categoryFilter,
   brandFilter,
+  stockFilter,
 }: ProductFiltersProps) => {
   const { products } = useProducts();
   
@@ -50,7 +54,11 @@ export const ProductFilters = ({
   }, [products]);
   
   const hasActiveFilters =
-    searchTerm || statusFilter !== 'all' || categoryFilter !== 'all' || brandFilter !== 'all';
+    searchTerm || 
+    statusFilter !== 'all' || 
+    categoryFilter !== 'all' || 
+    brandFilter !== 'all' ||
+    stockFilter !== 'all';
 
   return (
     <div className="flex flex-col md:flex-row gap-4 mb-6">
@@ -105,6 +113,20 @@ export const ProductFilters = ({
                 {brand}
               </SelectItem>
             ))}
+          </SelectGroup>
+        </SelectContent>
+      </Select>
+
+      <Select value={stockFilter} onValueChange={onStockChange}>
+        <SelectTrigger className="w-full md:w-[180px]">
+          <SelectValue placeholder="Filter by stock" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectGroup>
+            <SelectItem value="all">All Stock Levels</SelectItem>
+            <SelectItem value="out">Out of Stock</SelectItem>
+            <SelectItem value="low">Low Stock (≤10)</SelectItem>
+            <SelectItem value="sufficient">Sufficient Stock (>10)</SelectItem>
           </SelectGroup>
         </SelectContent>
       </Select>
